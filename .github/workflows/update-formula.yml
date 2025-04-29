@@ -29,7 +29,7 @@ jobs:
       - name: Checkout tap repository
         uses: actions/checkout@v3
         with:
-          repository: neakoh/homebrew-tools
+          repository: nikomain/homebrew-tools
           token: ${{ secrets.HOMEBREW_PAT_TOKEN }}
 
       - name: Update formula
