@@ -22,35 +22,21 @@ function _ensure_teleport_installed {
       echo "Please install Homebrew first: https://brew.sh/"
     fi
   fi
+  echo "Teleport already installed." 
 }
 
 # Run the check
 _ensure_teleport_installed
 
 # ================================================================
-# 2. Install helper script
+# 2. Add source command to shell profile
 # ================================================================
-
 # Detect brew prefix properly
-brew_prefix=$(brew --prefix 2>/dev/null || echo "/usr/local")
+brew_prefix=$(brew --prefix)
 
 # Define install location
 install_location="$brew_prefix/share/telehelper"
 helper_script="$install_location/telehelper-functions.sh"
-
-# Create the install directory if it doesn't exist
-if [ ! -d "$install_location" ]; then
-    mkdir -p "$install_location"
-    echo "Created directory: $install_location"
-fi
-
-# Copy helper script
-cp telehelper-functions.sh "$helper_script"
-echo "Installed telehelper.sh to $helper_script"
-
-# ================================================================
-# 3. Add source command to shell profile
-# ================================================================
 
 # Detect the current shell
 shell_name=$(basename "$SHELL")
