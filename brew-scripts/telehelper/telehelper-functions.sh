@@ -2,9 +2,9 @@
 # 		    Teleport CLI shortcuts
 # ===========================================================
 
-# Easily log in to your Teleport cluster
+# Easily log in/out to your Teleport cluster
 alias tl='tsh login --auth=ad --proxy=youlend.teleport.sh:443'
-
+alias tlo='tsh logout'
 # Quickly obtain AWS credentials via Teleport
 alias taws='tsh aws'
 hello(){
