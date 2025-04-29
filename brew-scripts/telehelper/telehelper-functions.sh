@@ -1,11 +1,15 @@
-# Teleport CLI shortcuts
+# ===========================================================
+# 		    Teleport CLI shortcuts
+# ===========================================================
 
 # Easily log in to your Teleport cluster
 alias tl='tsh login --auth=ad --proxy=youlend.teleport.sh:443'
 
 # Quickly obtain AWS credentials via Teleport
 alias taws='tsh aws'
-
+hello(){
+  echo Hello
+}
 # Main tkube function
 tkube() {
   # Check for top-level flags:
@@ -301,3 +305,5 @@ tsh_proxy() {
 	fi
 
 }
+
+
