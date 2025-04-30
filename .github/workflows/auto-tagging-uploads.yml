@@ -1,0 +1,53 @@
+name: Auto Tag Merges
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag-folders:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout full repo with tags
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get list of changed folders
+        id: folders
+        run: |
+          git fetch origin main
+          changed_folders=$(git diff --name-only HEAD^ HEAD | awk -F/ '{print $1}' | sort -u)
+          echo "Changed folders: $changed_folders"
+          echo "FOLDERS=$changed_folders" >> $GITHUB_ENV
+
+      - name: Tag each changed folder
+        run: |
+          for folder in $FOLDERS; do
+            if [ -d "$folder" ]; then
+              echo "Processing folder: $folder"
+              # Find latest tag
+              latest_tag=$(git tag --list "${folder}-*" --sort=-v:refname | head -n 1)
+
+              if [[ "$latest_tag" =~ $folder-([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+                major="${BASH_REMATCH[1]}"
+                minor="${BASH_REMATCH[2]}"
+                patch="${BASH_REMATCH[3]}"
+                new_patch=$((patch + 1))
+                new_version="${major}.${minor}.${new_patch}"
+              else
+                new_version="1.0.0"
+              fi
+
+              new_tag="${folder}-${new_version}"
+              echo "Creating tag: $new_tag"
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git tag "$new_tag"
+              git push origin "$new_tag"
+            else
+              echo "Skipping $folder (not a directory)"
+            fi
+          done
