@@ -68,7 +68,23 @@ jobs:
 
               FORMULA_FILE="Formula/${tool}.rb"
               DOWNLOAD_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${tag_name}.tar.gz"
-              SHA256=$(curl -L $DOWNLOAD_URL | shasum -a 256 | cut -d ' ' -f 1)
+              # Wait and retry logic to ensure the tag is available for download
+              attempt=0
+              max_attempts=5
+              delay_seconds=5
+              
+              until curl --silent --fail -L "$DOWNLOAD_URL" -o tag.tar.gz; do
+                attempt=$((attempt + 1))
+                if [ "$attempt" -ge "$max_attempts" ]; then
+                  echo "❌ Failed to fetch $DOWNLOAD_URL after $max_attempts attempts."
+                  exit 1
+                fi
+                echo "🔄 Attempt $attempt failed. Retrying in $delay_seconds seconds..."
+                sleep $delay_seconds
+              done
+              
+              SHA256=$(shasum -a 256 tag.tar.gz | cut -d ' ' -f 1)
+
 
               sed -i '' "s|url \".*\"|url \"$DOWNLOAD_URL\"|" $FORMULA_FILE
               sed -i '' "s|sha256 \".*\"|sha256 \"$SHA256\"|" $FORMULA_FILE
