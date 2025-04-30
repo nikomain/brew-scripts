@@ -47,8 +47,8 @@ jobs:
 
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git tag "$folder/$new_version"
-              git push origin "$folder/$new_version"
+              git tag "$folder-$new_version"
+              git push origin "$folder-$new_version"
             else
               echo "Skipping $folder_path (not a directory)"
             fi
