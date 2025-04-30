@@ -8,7 +8,7 @@ alias tlo='tsh logout'
 # Quickly obtain AWS credentials via Teleport
 alias taws='tsh aws'
 hello(){
-  echo Hello
+  echo Hello World
 }
 # Main tkube function
 tkube() {
