@@ -31,7 +31,7 @@ jobs:
               echo "Processing folder: $folder"
 
               # Find latest tag in the format vX.Y.Z for this folder
-              latest_tag=$(git tag --list "$folder/v*" | sort -V | tail -n 1)
+              latest_tag=$(git tag --list "$folder-v*" | sort -V | tail -n 1)
 
               if [[ "$latest_tag" =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
                 major="${BASH_REMATCH[1]}"
@@ -43,7 +43,7 @@ jobs:
                 new_version="v1.0.0"
               fi
 
-              echo "Creating tag: $folder/$new_version"
+              echo "Creating tag: $folder-$new_version"
 
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
