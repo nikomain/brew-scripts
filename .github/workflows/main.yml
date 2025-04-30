@@ -1,0 +1,74 @@
+name: Update Homebrew Formula
+
+on:
+  push:
+    paths:
+      - main
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed tool folder
+        id: detect
+        run: |
+          FOLDER=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^folder/' | cut -d'/' -f2 | sort -u | head -n1)
+          echo "tool_name=$FOLDER" >> $GITHUB_OUTPUT
+          echo "Detected tool folder: $FOLDER"
+
+      - name: Get latest version from tags
+        id: tag
+        run: |
+          TOOL=${{ steps.detect.outputs.tool_name }}
+          LAST_TAG=$(git tag --sort=-v:refname | grep "^${TOOL}-v" | head -n1)
+          echo "Last tag: $LAST_TAG"
+          BASE_VERSION=$(echo $LAST_TAG | sed -E "s/^${TOOL}-v([0-9]+)\.([0-9]+)\.([0-9]+)$/\1.\2.\3/")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          NEW_TAG="${TOOL}-v${NEW_VERSION}"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "tool_name=$TOOL" >> $GITHUB_OUTPUT
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create new tag
+        run: |
+          git config user.name "${{ secrets.GH_USERNAME }}"
+          git config user.email "${{ secrets.GH_EMAIL }}"
+          git tag ${{ steps.tag.outputs.new_tag }}
+          git push origin ${{ steps.tag.outputs.new_tag }}
+
+      - name: Calculate SHA256
+        id: sha
+        run: |
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${{ steps.tag.outputs.new_tag }}.tar.gz"
+          curl -L $DOWNLOAD_URL | shasum -a 256 | cut -d ' ' -f 1 > sha.txt
+          echo "sha256=$(cat sha.txt)" >> $GITHUB_OUTPUT
+          echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v3
+        with:
+          repository: nikomain/homebrew-tools
+          token: ${{ secrets.HOMEBREW_PAT_TOKEN }}
+          path: tap
+
+      - name: Update formula
+        run: |
+          FORMULA_FILE="tap/Formula/${{ steps.tag.outputs.tool_name }}.rb"
+          sed -i 's|url ".*"|url "${{ steps.sha.outputs.download_url }}"|' $FORMULA_FILE
+          sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' $FORMULA_FILE
+          sed -i 's|version ".*"|version "${{ steps.tag.outputs.version }}"|' $FORMULA_FILE
+
+      - name: Commit and push
+        run: |
+          cd tap
+          git config user.name "${{ secrets.GH_USERNAME }}"
+          git config user.email "${{ secrets.GH_EMAIL }}"
+          git add Formula/${{ steps.tag.outputs.tool_name }}.rb
+          git commit -m "Update ${{ steps.tag.outputs.tool_name }} formula to ${{ steps.tag.outputs.version }}"
+          git push
