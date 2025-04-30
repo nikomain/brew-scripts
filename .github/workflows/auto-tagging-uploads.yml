@@ -49,7 +49,7 @@ jobs:
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git tag "$folder-$new_version"
               git remote set-url origin https://x-access-token:${{ secrets.HOMEBREW_PAT_TOKEN }}@github.com/${{ github.repository }}
-              git push origin "$tag_name"
+              git push origin "$folder-$new_version"
 
             else
               echo "Skipping $folder_path (not a directory)"
