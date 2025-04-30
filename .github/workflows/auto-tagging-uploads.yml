@@ -1,10 +1,5 @@
 name: Auto Tag Merges
 
-on:
-  push:
-    branches:
-      - main
-
 jobs:
   tag-folders:
     runs-on: ubuntu-latest
