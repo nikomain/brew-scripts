@@ -18,19 +18,20 @@ jobs:
       - name: Get list of changed subfolders
         id: folders
         run: |
-          # Get second-level folder names (e.g., script1 from brew-scripts/script1/file.sh)
-          changed_folders=$(git diff --name-only HEAD^ HEAD | awk -F/ 'NF>=2 {print $2}' | sort -u)
+          # Get full path of second-level folders (e.g., brew-scripts/telehelper)
+          changed_folders=$(git diff --name-only HEAD^ HEAD | awk -F/ '{print $1 "/" $2}' | grep -v '^/' | sort -u)
           echo "Changed folders: $changed_folders"
           echo "FOLDERS=$changed_folders" >> $GITHUB_ENV
 
       - name: Tag each changed folder
         run: |
-          for folder in $FOLDERS; do
-            if [ -d "$folder" ]; then
+          for folder_path in $FOLDERS; do
+            if [ -d "$folder_path" ]; then
+              folder=$(basename "$folder_path")
               echo "Processing folder: $folder"
 
-              # Find latest tag for this folder in format vX.Y.Z
-              latest_tag=$(git tag --list "v*" | grep "^v[0-9]*\.[0-9]*\.[0-9]*$" | grep "$folder" | sort -V | tail -n 1)
+              # Find latest tag in the format vX.Y.Z for this folder
+              latest_tag=$(git tag --list "$folder/v*" | sort -V | tail -n 1)
 
               if [[ "$latest_tag" =~ v([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
                 major="${BASH_REMATCH[1]}"
@@ -42,13 +43,13 @@ jobs:
                 new_version="v1.0.0"
               fi
 
-              echo "Creating tag: $new_version for folder $folder"
+              echo "Creating tag: $folder/$new_version"
 
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
               git tag "$folder/$new_version"
               git push origin "$folder/$new_version"
             else
-              echo "Skipping $folder (not a directory)"
+              echo "Skipping $folder_path (not a directory)"
             fi
           done
