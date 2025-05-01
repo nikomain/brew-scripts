@@ -42,11 +42,11 @@ helper_script="$install_location/telehelper-functions.sh"
 shell_name=$(basename "$SHELL")
 
 if [ "$shell_name" = "zsh" ]; then
-    shell_profile="$HOME/.zshrc"
-elif [ "$shell_name" = "bash" ]; then
+    echo "Not compatible with zsh. Change to /bin/bash"
+    echo "To do so exit the script & run chsh -s /bin/bash"
+    echo "restart your terminal & then run telehelper-install again"
+else [ "$shell_name" = "bash" ]; then
     shell_profile="$HOME/.bash_profile"
-else
-    shell_profile="$HOME/.profile"
 fi
 
 line_to_add="source $helper_script"

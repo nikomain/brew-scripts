@@ -2,86 +2,7 @@
 # 		    Teleport CLI shortcuts
 # ===========================================================
 th(){
-  case "$1" in
-    kill)
-      if [[ "$2" == "-h" ]]; then
-	echo "Usage: script.sh kill [options]"
-	echo "Kills the target process or service."
-      else
-	th_kill "$@"
-      fi
-      ;;
-    init)
-      if [[ "$2" == "-h" ]]; then
-	echo "Usage: script.sh init"
-	echo "Initializes the environment."
-      else
-	th_init "$@"
-      fi
-      ;;
-    switch)
-      if [[ "$2" == "-h" ]]; then
-	echo "Usage: script.sh switch [context]"
-	echo "Switches between configurations."
-      else
-	th_switch "$@"
-      fi
-      ;;
-    kube)
-      if [[ "$2" == "-h" ]]; then
-	echo "Usage: script.sh kube"
-	echo "Interacts with Kubernetes."
-      else
-	tkube "$@"
-      fi
-      ;;
-    aws)
-      if [[ "$2" == "-h" ]]; then
-	echo "Usage: script.sh aws [options]"
-	echo "Handles AWS-specific tasks."
-      else
-	tawspp "$@"
-      fi
-      ;;
-    login)
-      if [[ "$2" == "-h" ]]; then
-	echo "Simple login to Teleport."
-      else
-	tsh login --auth=ad --proxy=youlend.teleport.sh:443
-      fi
-      ;;
-    logout)
-      if [[ "$2" == "-h" ]]; then
-	echo "Logout from all proxies."
-      else
-	tsh logout      
-      fi
-      ;;
-    creds)
-      if [[ "$2" == "-h" ]]; then
-	echo "Retrieve AWS credentials"
-      else
-	tsh aws
-      fi
-      ;;
-    *)
-      printf "\033[1mGeneral Usage:\033[0m\n\n"
-      printf "Run \033[1mth init\033[0m to start. This will set up all proxies & create files \n"
-      printf "which can be used to switch accounts. To switch account run \033[1mth switch\033[0m \n"
-      printf "which will prompt you with the various available accounts. Once finished \n"
-      printf "run \033[1mtsh kill\033[0m to log out of all proxies & clean up /tmp. \n\n"
-      printf "\033[1mComplete option list:\033[0m\n\n"
-      printf "\033[1mth init\033[0m:   Initialise all AWS accounts.\n"
-      printf "\033[1mth kill\033[0m:   Log out of all accounts.\n"
-      printf "\033[1mth switch\033[0m: Switch active account.\n"
-      printf "\033[1mth kube\033[0m:   Kubernetes login options.\n"
-      printf "\033[1mth aws\033[0m:    AWS login options.\n"
-      printf "\033[1mth login\033[0m:  Basic login.\n"
-      printf "\033[1mth logout\033[0m: Logout from all proxies.\n"
-      printf "\033[1mth creds\033[0m:  Retrieve AWS credentials.\n"
-      printf "\033[1m------------------------------------------------------------------------\033[0m\n"
-      printf "For specific instructions regarding any of the above, run \033[1mth <option> -h\033[0m\n"
-  esac
+
   # run this as soon as you boot up, it will setup all of the proxies and end points
   # it will create files in /tmp with environment variables that you can source
   # to switch between accounts simply source the relavent file.
@@ -399,6 +320,87 @@ th(){
     tsh apps login "$app" --aws-role "$role_name"
   }
 
+  # Handle user input & redirect to the appropriate function
+  case "$1" in
+    kill)
+      if [[ "$2" == "-h" ]]; then
+	echo "Usage: script.sh kill [options]"
+	echo "Kills the target process or service."
+      else
+	th_kill "$@"
+      fi
+      ;;
+    init)
+      if [[ "$2" == "-h" ]]; then
+	echo "Usage: script.sh init"
+	echo "Initializes the environment."
+      else
+	th_init "$@"
+      fi
+      ;;
+    switch)
+      if [[ "$2" == "-h" ]]; then
+	echo "Usage: script.sh switch [context]"
+	echo "Switches between configurations."
+      else
+	th_switch "$@"
+      fi
+      ;;
+    kube)
+      if [[ "$2" == "-h" ]]; then
+	echo "Usage: script.sh kube"
+	echo "Interacts with Kubernetes."
+      else
+	tkube "$@"
+      fi
+      ;;
+    aws)
+      if [[ "$2" == "-h" ]]; then
+	echo "Usage: script.sh aws [options]"
+	echo "Handles AWS-specific tasks."
+      else
+	tawspp "$@"
+      fi
+      ;;
+    login)
+      if [[ "$2" == "-h" ]]; then
+	echo "Simple login to Teleport."
+      else
+	tsh login --auth=ad --proxy=youlend.teleport.sh:443
+      fi
+      ;;
+    logout)
+      if [[ "$2" == "-h" ]]; then
+	echo "Logout from all proxies."
+      else
+	tsh logout      
+      fi
+      ;;
+    creds)
+      if [[ "$2" == "-h" ]]; then
+	echo "Retrieve AWS credentials"
+      else
+	tsh aws
+      fi
+      ;;
+    *)
+      printf "\033[1mGeneral Usage:\033[0m\n\n"
+      printf "Run \033[1mth init\033[0m to start. This will set up all proxies & create files \n"
+      printf "which can be used to switch accounts. To switch account run \033[1mth switch\033[0m \n"
+      printf "which will prompt you with the various available accounts. Once finished \n"
+      printf "run \033[1mtsh kill\033[0m to log out of all proxies & clean up /tmp. \n\n"
+      printf "\033[1mComplete option list:\033[0m\n\n"
+      printf "\033[1mth init\033[0m:   Initialise all AWS accounts.\n"
+      printf "\033[1mth kill\033[0m:   Log out of all accounts.\n"
+      printf "\033[1mth switch\033[0m: Switch active account.\n"
+      printf "\033[1mth kube\033[0m:   Kubernetes login options.\n"
+      printf "\033[1mth aws\033[0m:    AWS login options.\n"
+      printf "\033[1mth login\033[0m:  Basic login.\n"
+      printf "\033[1mth logout\033[0m: Logout from all proxies.\n"
+      printf "\033[1mth creds\033[0m:  Retrieve AWS credentials.\n"
+      printf "\033[1m------------------------------------------------------------------------\033[0m\n"
+      printf "For specific instructions regarding any of the above, run \033[1mth <option> -h\033[0m\n"
+  esac
 }
 
 
