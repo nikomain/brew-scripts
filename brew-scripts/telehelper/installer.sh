@@ -45,7 +45,7 @@ if [ "$shell_name" = "zsh" ]; then
     echo "Not compatible with zsh. Change to /bin/bash"
     echo "To do so exit the script & run chsh -s /bin/bash"
     echo "restart your terminal & then run telehelper-install again"
-else [ "$shell_name" = "bash" ]; then
+else [ "$shell_name" = "bash" ];
     shell_profile="$HOME/.bash_profile"
 fi
 
