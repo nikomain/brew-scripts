@@ -44,7 +44,7 @@ shell_name=$(basename "$SHELL")
 if [ "$shell_name" = "zsh" ]; then
     shell_profile="$HOME/.zshrc"
 elif [ "$shell_name" = "bash" ]; then
-    shell_profile="$HOME/.bashrc"
+    shell_profile="$HOME/.bash_profile"
 else
     shell_profile="$HOME/.profile"
 fi
