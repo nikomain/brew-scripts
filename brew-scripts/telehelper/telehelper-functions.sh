@@ -4,34 +4,64 @@
 th(){
   # Helper function to prompt user to switch roles once all proxies have been configured
   th_switch() {
-    echo "Available roles:"
     local available_roles=()
+    local role_path name
+
+    # Collect role files from /tmp
     for role_path in /tmp/*; do
       [[ "$role_path" == *.log ]] && continue
       name="${role_path##*/}"
-      if [[ "$name" =~ (yl|tsh|admin) ]]; then
-	echo "$name"
+      if [[ "$name" =~ ^(yl|tsh|admin) ]]; then
 	available_roles+=("$name")
       fi
     done
 
-    # If a parameter is passed, try to match it with available roles
+    # Exit early if no roles found
+    if [[ ${#available_roles[@]} -eq 0 ]]; then
+      echo "No roles available. Run 'th init' to set up Teleport proxies and AWS profiles."
+      return 1
+    fi
+
+    # If argument provided, try to switch directly
     if [[ -n "$1" ]]; then
       for role in "${available_roles[@]}"; do
 	if [[ "$1" == "$role" ]]; then
 	  source "/tmp/$role"
 	  echo "Switched to $role successfully"
-	  return
+	  return 0
 	fi
       done
       echo "Error: Role '$1' not found among available roles."
       return 1
     fi
 
-    # Fallback to user input if no parameter is passed
-    read -p "Select which role you'd like to assume: " role
-    source "/tmp/$role"
-    echo "Switched to $role successfully"
+    # Otherwise list and prompt user with numbered selection
+    echo "Available roles:"
+    for i in "${!available_roles[@]}"; do
+      printf "%2d. %s\n" $((i + 1)) "${available_roles[$i]}"
+    done
+
+    read -p "Select which role you'd like to assume (number): " choice
+
+    if [[ -z "$choice" || ! "$choice" =~ ^[0-9]+$ ]]; then
+      echo "Invalid selection. Exiting."
+      return 1
+    fi
+
+    local index=$((choice - 1))
+    if (( index < 0 || index >= ${#available_roles[@]} )); then
+      echo "Selection out of range. Exiting."
+      return 1
+    fi
+
+    local selected_role="${available_roles[$index]}"
+    if [[ -f "/tmp/$selected_role" ]]; then
+      source "/tmp/$selected_role"
+      echo "Switched to $selected_role successfully"
+    else
+      echo "Error: Role file '/tmp/$selected_role' not found."
+      return 1
+    fi
   }
 
   th_kill() {
@@ -94,6 +124,7 @@ th(){
       tsh apps login $i  2>&1 | tee /tmp/tsh_login_output.log
       if grep -q "ERROR" /tmp/tsh_login_output.log; then
 	      ROLE=$(grep arn /tmp/tsh_login_output.log | head -n1 | sed 's/ .*//g')
+	      echo "Using role:" $ROLE
 	      tsh apps login $i --aws-role $ROLE
       fi
       th_proxy $i
@@ -103,7 +134,9 @@ th(){
     th_proxy yl-admin true
     tsh kube ls | cut -d ' ' -f1 | sed '1,2d' | grep . | xargs -n1 tsh kube login
 
-    printf "Run \033[1mth switch\033[0m or \033[1mth switch <role>\033[0m to select a role."
+    printf "Run \033[1mth switch\033[0m or \033[1mth switch <role>\033[0m to select an AWS role."
+    printf "Or run \033[1mth kube | th k\033[1m to log into"
+
   }
   #===============================================
   #================ Kubernetes ===================
@@ -134,7 +167,7 @@ th(){
     fi
 
     local chosen_line cluster
-    chosen_line=$(echo "$clusters" | sed -n "${choice}")
+    chosen_line=$(echo "$clusters" | sed -n "${choice}p")
     if [ -z "$chosen_line" ]; then
       echo "Invalid selection."
       return 1
@@ -152,10 +185,8 @@ th(){
 
   # th kube handler
   tkube() {
-    # Check for top-level flags:
-    # -i for choose (interactive login)
-    # -l for list clusters
-    if [ "$1" = "-c" ]; then
+    if [ $# -eq 0 ]; then
+      shift
       tkube_interactive_login
       return
     fi 
@@ -163,28 +194,23 @@ th(){
       -l)
 	tsh kube ls -f text
 	;;
-      -i)
-	if [ "$1" = "-c" ]; then
-	  tkube_interactive_login
-	else
-	  tsh kube login "$@"
-	fi
-	;;
       -s)
+	shift
 	tsh kube sessions "$@"
 	;;
       -e)
+	shift
 	tsh kube exec "$@"
 	;;
       -j)
+	shift
 	tsh kube join "$@"
 	;;
-      *)
+       *)
 	echo "Usage:"
-	echo "-c : Log in in interactive mode"
-	echo "-l : List all kubernetes clusters"
-	echo "-s : List all current sessions"
-	echo "-e : Execute a command"
+	echo "-l : List all clusters"
+	echo "-s : List all sessions"
+	echo "-e : Execute command"
 	echo "-j : Join something"
 	;;
     esac
@@ -300,15 +326,13 @@ th(){
 
   # th aws handler
   tawsp() {
-    # Top-level flags:
-    # -i: interactive login (choose app and then role)
-    # -l: list available apps
+    if [[ $# -eq 0 ]]; then
+      tawsp_interactive_login
+      return
+    fi
     case "$1" in
       -l)
 	tsh apps ls -f text
-      ;;
-      -i)
-	tawsp_interactive_login
       ;;
       *)
 	echo "Usage:"
@@ -346,9 +370,7 @@ th(){
       ;;
     kube|k)
       if [[ "$2" == "-h" ]]; then
-	echo "Handle various functions related to Kubernetes infra"
 	echo "Usage:"
-	echo "-c : Log in in interactive mode"
 	echo "-l : List all kubernetes clusters"
 	echo "-s : List all current sessions"
 	echo "-e : Execute a command"
@@ -360,9 +382,7 @@ th(){
       ;;
     aws|a)
       if [[ "$2" == "-h" ]]; then
-	echo "List all AWS accounts & login."
 	echo "Usage:"
-	echo "-i : Interactive login"
 	echo "-l : List all accounts"
       else
 	shift
@@ -371,7 +391,7 @@ th(){
       ;;
     login)
       if [[ "$2" == "-h" ]]; then
-	printf "Simple login to \033[1mTeleport\033[0m"
+	printf "Login to \033[1mTeleport\033[0m"
       else
 	tsh login --auth=ad --proxy=youlend.teleport.sh:443
       fi
@@ -385,7 +405,8 @@ th(){
       ;;
     creds)
       if [[ "$2" == "-h" ]]; then
-	echo "Retrieve AWS credentials"
+	echo "Retrieve AWS credentials for a given role."
+	echo "Usage: th creds <role_name>"
       else
 	shift
 	tsh aws "$@"
@@ -394,18 +415,18 @@ th(){
     *)
       printf "\033[1mGeneral Usage:\033[0m\n\n"
       printf "Run \033[1mth init\033[0m to start. This will set up all proxies & create files \n"
-      printf "which can be used to switch accounts. To switch account run \033[1mth switch\033[0m \n"
+      printf "which can be used to switch accounts. To switch account run \033[1mth switch|s\033[0m \n"
       printf "which will prompt you with the various available accounts. Once finished \n"
       printf "run \033[1mtsh kill\033[0m to log out of all proxies & clean up /tmp. \n\n"
       printf "\033[1mComplete option list:\033[0m\n\n"
-      printf "\033[1mth init | i\033[0m:   Initialise all AWS accounts.\n"
-      printf "\033[1mth kill \033[0m:   Log out of all accounts.\n"
-      printf "\033[1mth switch | s\033[0m: Switch active account.\n"
-      printf "\033[1mth kube | k\033[0m:   Kubernetes login options.\n"
-      printf "\033[1mth aws | a\033[0m:    AWS login options.\n"
-      printf "\033[1mth login\033[0m:  Basic login.\n"
-      printf "\033[1mth logout\033[0m: Logout from all proxies.\n"
-      printf "\033[1mth creds\033[0m:  Retrieve AWS credentials.\n"
+      printf "\033[1mth init   | i\033[0m : Initialise all accounts.\n"
+      printf "\033[1mth kill \033[0m      : Log out of all accounts.\n"
+      printf "\033[1mth switch | s\033[0m : Switch active account.\n"
+      printf "\033[1mth kube   | k\033[0m : Kubernetes login options.\n"
+      printf "\033[1mth aws    | a\033[0m : AWS login options.\n"
+      printf "\033[1mth login\033[0m      : Basic login.\n"
+      printf "\033[1mth logout\033[0m     : Logout from all proxies.\n"
+      printf "\033[1mth creds\033[0m      : Retrieve AWS credentials.\n"
       printf "\033[1m------------------------------------------------------------------------\033[0m\n"
       printf "For specific instructions regarding any of the above, run \033[1mth <option> -h\033[0m\n"
   esac
