@@ -222,23 +222,27 @@ th(){
   #===============================================
   get_credentials() {
     local app
+    
     app=$(tsh apps ls -f text | awk '$1 == ">" { print $2 }')
 
     if [ -z "$app" ]; then
       echo "No active app found. Run 'tsh apps login <app>' first."
       return 1
     fi
-
-    echo "Starting AWS proxy for app: $app..."
-
+    
     local log_file="/tmp/tsh_proxy_${app}.log"
 
-    pkill -f "tsh proxy aws --app $app" 2>/dev/null
-    echo "Killed existing proxy"
+    pkill -f "tsh proxy aws" 2>/dev/null
+
+    printf "\033[0;32mKilled existing proxy\033[0m\n"
+
     for f in /tmp/yl* /tmp/tsh* /tmp/admin_*; do
       [ -e "$f" ] && rm -f "$f"
     done
     echo "Cleaned up existing credentials files."
+
+    echo "Starting AWS proxy for app: $app..."
+
     tsh proxy aws --app "$app" > "$log_file" 2>&1 &
     # Wait up to 10 seconds for credentials to appear
     local wait_time=0
@@ -256,6 +260,8 @@ th(){
     while read -r line; do
       [[ $line == export* || $line == "  export"* ]] && eval "$line"
     done < "$log_file"
+
+    export ACCOUNT=$app
     echo "export ACCOUNT=$app" >> $log_file
 
     sed -i '' '/^source \/tmp\/tsh/d' ~/.bash_profile
@@ -410,6 +416,7 @@ th(){
   #================= Terraform ===================
   #===============================================
   terraform_login() {
+    tsh apps logout
     tsh apps login "yl-admin" --aws-role "sudo_admin"
     get_credentials
     echo "Logged into yl-admin as sudo_admin."
@@ -457,7 +464,7 @@ th(){
 	tkube "$@"
       fi
       ;;
-    terraform|t)
+    terra|t)
       if [[ "$2" == "-h" ]]; then
 	echo "Logs into yl-admin as sudo-admin"
       else
@@ -508,6 +515,7 @@ th(){
       printf "\033[1mth switch | s\033[0m : Switch active account.\n"
       printf "\033[1mth kube   | k\033[0m : Kubernetes login options.\n"
       printf "\033[1mth aws    | a\033[0m : AWS login options.\n"
+      printf "\033[1mth terra  | t\033[0m : Log into yl-admin as sudo-admin.\n"
       printf "\033[1mth login\033[0m      : Basic login.\n"
       printf "\033[1mth logout\033[0m     : Logout from all proxies.\n"
       printf "\033[1mth creds\033[0m      : Retrieve AWS credentials.\n"
