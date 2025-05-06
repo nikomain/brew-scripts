@@ -35,8 +35,8 @@ _ensure_teleport_installed
 brew_prefix=$(brew --prefix)
 
 # Define install location
-install_location="$brew_prefix/share/telehelper"
-helper_script="$install_location/telehelper-functions.sh"
+install_location="$brew_prefix/share/th"
+helper_script="$install_location/th-functions.sh"
 
 # Detect the current shell
 shell_name=$(basename "$SHELL")

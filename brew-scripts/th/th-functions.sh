@@ -78,9 +78,10 @@ th(){
     # Log out of all TSH apps
     tsh apps logout
     # Kill all running processes related to TSH
-    sudo netstat -lunp tcp | grep tsh | awk '{print $7}' | cut -d '/' -f1 | xargs -I {} kill {}
-  }
+    ps aux | grep '[t]sh proxy aws' | awk '{print $2}' | xargs kill
 
+    echo "Killed all running proxies"
+  }
   # This function will start a Teleport proxy for the specified account and save the environment variables in a file
   th_proxy() {
     unset AWS_ACCESS_KEY_ID
@@ -135,7 +136,7 @@ th(){
     tsh kube ls | cut -d ' ' -f1 | sed '1,2d' | grep . | xargs -n1 tsh kube login
 
     printf "Run \033[1mth switch\033[0m or \033[1mth switch <role>\033[0m to select an AWS role."
-    printf "Or run \033[1mth kube | th k\033[1m to log into"
+    printf "\nOr run \033[1mth kube | th k\033[0m to log into a cluster."
 
   }
   #===============================================
@@ -219,7 +220,58 @@ th(){
   #===============================================
   #=================== AWS =======================
   #===============================================
+  get_credentials() {
+    local app
+    app=$(tsh apps ls -f text | awk '$1 == ">" { print $2 }')
 
+    if [ -z "$app" ]; then
+      echo "No active app found. Run 'tsh apps login <app>' first."
+      return 1
+    fi
+
+    echo "Starting AWS proxy for app: $app..."
+
+    local log_file="/tmp/tsh_proxy_${app}.log"
+
+    pkill -f "tsh proxy aws --app $app" 2>/dev/null
+    echo "Killed existing proxy"
+    for f in /tmp/yl* /tmp/tsh* /tmp/admin_*; do
+      [ -e "$f" ] && rm -f "$f"
+    done
+    echo "Cleaned up existing credentials files."
+    tsh proxy aws --app "$app" > "$log_file" 2>&1 &
+    # Wait up to 10 seconds for credentials to appear
+    local wait_time=0
+    while ! grep -q '^  export AWS_ACCESS_KEY_ID=' "$log_file"; do
+      sleep 0.5
+      wait_time=$((wait_time + 1))
+      if (( wait_time >= 20 )); then
+	echo "Timed out waiting for AWS credentials."
+	return 1
+      fi
+    done
+    # Remove everything but export variable lines
+    printf "%s\n" "$(grep -E '^[[:space:]]*export ' "$log_file")" > "$log_file"
+    # Source all export lines
+    while read -r line; do
+      [[ $line == export* || $line == "  export"* ]] && eval "$line"
+    done < "$log_file"
+    echo "export ACCOUNT=$app" >> $log_file
+
+    sed -i '' '/^source \/tmp\/tsh/d' ~/.bash_profile
+    echo "source $log_file" >> ~/.bash_profile 
+
+    # Set region
+    if [[ $app =~ ^yl-us ]]; then
+      export AWS_DEFAULT_REGION=us-east-2
+      echo "export AWS_DEFAULT_REGION=us-east-2" >> $log_file
+    else
+      export AWS_DEFAULT_REGION=eu-west-1
+      echo "export AWS_DEFAULT_REGION=eu-west-1" >> $log_file
+    fi
+
+    echo "Credentials exported for app: $app"
+  }
   # Helper function for interactive app login with AWS role selection
   tawsp_interactive_login() {
     local output header apps
@@ -322,6 +374,19 @@ th(){
 
     echo "Logging you into app: $app with AWS role: $role_name"
     tsh apps login "$app" --aws-role "$role_name"
+
+    while true; do
+      read -p "Would you like to create a proxy? (y/n) " proxy
+      if [[ $proxy =~ ^[Yy]$ ]]; then
+	get_credentials
+	break
+      elif [[ $proxy =~ ^[Nn]$ ]]; then
+	echo "Proxy creation skipped."
+	break
+      else
+	echo "Invalid input. Please enter Y or N."
+      fi
+    done
   }
 
   # th aws handler
@@ -341,6 +406,18 @@ th(){
     esac
   }
 
+  #===============================================
+  #================= Terraform ===================
+  #===============================================
+  terraform_login() {
+    tsh apps login "yl-admin" --aws-role "sudo_admin"
+    get_credentials
+    echo "Logged into yl-admin as sudo_admin."
+  }
+
+  #===============================================
+  #================== Handler ====================
+  #===============================================
   # Handle user input & redirect to the appropriate function
   case "$1" in
     kill)
@@ -380,6 +457,14 @@ th(){
 	tkube "$@"
       fi
       ;;
+    terraform|t)
+      if [[ "$2" == "-h" ]]; then
+	echo "Logs into yl-admin as sudo-admin"
+      else
+	shift
+	terraform_login "$@"
+      fi
+      ;;
     aws|a)
       if [[ "$2" == "-h" ]]; then
 	echo "Usage:"
@@ -408,8 +493,7 @@ th(){
 	echo "Retrieve AWS credentials for a given role."
 	echo "Usage: th creds <role_name>"
       else
-	shift
-	tsh aws "$@"
+	get_credentials
       fi
       ;;
     *)
@@ -431,11 +515,3 @@ th(){
       printf "For specific instructions regarding any of the above, run \033[1mth <option> -h\033[0m\n"
   esac
 }
-
-
-
-
-
-
-
-
