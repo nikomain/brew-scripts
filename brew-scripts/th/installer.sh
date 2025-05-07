@@ -42,9 +42,7 @@ helper_script="$install_location/th-functions.sh"
 shell_name=$(basename "$SHELL")
 
 if [ "$shell_name" = "zsh" ]; then
-    echo "Not compatible with zsh. Change to /bin/bash"
-    echo "To do so exit the script & run chsh -s /bin/bash"
-    echo "restart your terminal & then run th-install again"
+    shell_profile="$HOME/.zshrc" 
 else [ "$shell_name" = "bash" ];
     shell_profile="$HOME/.bash_profile"
 fi
