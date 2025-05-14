@@ -436,7 +436,8 @@ th(){
     # (This command will error out because --aws-role is required, but it prints the available AWS roles.)
     local login_output
     login_output=$(tsh apps login "$app" 2>&1)
-
+    echo $login_output
+    return 1
     # Extract the AWS roles section.
     # The section is expected to start after "Available AWS roles:" and end before the error message.
     local role_section
@@ -444,6 +445,8 @@ th(){
 
     # Remove lines that contain "ERROR:" or that are empty.
     role_section=$(echo "$role_section" | grep -v "ERROR:" | sed '/^\s*$/d')
+    echo $role_section
+    return 1
 
     if [ -z "$role_section" ]; then
       echo "No AWS roles info found. Attempting direct login..."
@@ -597,14 +600,6 @@ th(){
 	tsh logout      
       fi
       ;;
-    creds|c)
-      if [[ "$2" == "-h" ]]; then
-	echo "Retrieve AWS credentials for a given role."
-	echo "Usage: th creds <role_name>"
-      else
-	get_credentials
-      fi
-      ;;
     *)
       printf "\033[1mGeneral Usage:\033[0m\n\n"
       printf "Run \033[1mth init\033[0m to start. This will set up all proxies & create files \n"
@@ -614,7 +609,6 @@ th(){
       printf "\033[1mComplete option list:\033[0m\n\n"
       printf "\033[1mth init   | i\033[0m : Initialise all accounts.\n"
       printf "\033[1mth switch | s\033[0m : Switch active account.\n"
-      printf "\033[1mth creds  | c\033[0m : Retrieve AWS credentials.\n"
       printf "\033[1mth kube   | k\033[0m : Kubernetes login options.\n"
       printf "\033[1mth aws    | a\033[0m : AWS login options.\n"
       printf "\033[1mth terra  | t\033[0m : Log into yl-admin as sudo-admin.\n"

@@ -1,0 +1,10 @@
+name = test
+desc = testing
+version = 1.0.0
+license = homepage = https://github.com/nikomain/brew-scripts/test
+install = bin.install "installer.sh" => "test-install"
+caveats = |
+  Thanks for installing `test`!
+  - Run `test --help` to get started.
+  - Documentation: https://github.com/nikomain/brew-scripts/test
+

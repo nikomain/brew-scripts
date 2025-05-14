@@ -1,0 +1,71 @@
+name: Auto Tag on Merge
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  tag-tool:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Needed for tags & commits
+
+      - name: Detect tool from changed files
+        id: tool
+        run: |
+          git fetch origin main --depth=1
+          CHANGED=$(git diff --name-only HEAD^ HEAD)
+
+          # Assume tools live in scripts/<toolname>/
+          TOOL_NAME=$(echo "$CHANGED" | grep -oE '^scripts/[^/]+/' | cut -d/ -f2 | sort -u | head -n1)
+
+          if [[ -z "$TOOL_NAME" ]]; then
+            echo "❌ No tool detected from file changes"
+            exit 0
+          fi
+
+          echo "Detected tool: $TOOL_NAME"
+          echo "tool_name=$TOOL_NAME" >> $GITHUB_OUTPUT
+
+      - name: Bump version and tag
+        run: |
+          TOOL_NAME=${{ steps.tool.outputs.tool_name }}
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+
+          echo "🔍 Looking for latest tag for $TOOL_NAME"
+          LATEST_TAG=$(git tag --sort=-v:refname | grep "^$TOOL_NAME-v" | head -n1)
+
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "ℹ️ No existing tag found. Starting at 1.0.0"
+            MAJOR=1
+            MINOR=0
+            PATCH=0
+          else
+            VERSION_PART=${LATEST_TAG#"$TOOL_NAME-v"}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_PART"
+          fi
+
+          # Decide which part to bump
+          if echo "$COMMIT_MSG" | grep -iq "#major"; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif echo "$COMMIT_MSG" | grep -iq "#minor"; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_TAG="$TOOL_NAME-v$MAJOR.$MINOR.$PATCH"
+
+          echo "🏷 Tagging new version: $NEW_TAG"
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git tag "$NEW_TAG"
+          git push origin "$NEW_TAG"
