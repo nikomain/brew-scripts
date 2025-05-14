@@ -48,12 +48,11 @@ jobs:
           FORMULA_FILE="Formula/${{ steps.tag.outputs.tool_name }}.rb"
           TOOL_FOLDER="${{ steps.tag.outputs.tool_name }}"
           META_FILE="$TOOL_FOLDER/formula.meta"
-
-          # Save GitHub output values to shell variables
+      
           DOWNLOAD_URL="${{ steps.sha.outputs.download_url }}"
           SHA256="${{ steps.sha.outputs.sha256 }}"
           VERSION="${{ steps.tag.outputs.version }}"
-
+      
           if [[ -f "$FORMULA_FILE" ]]; then
             echo "🔄 Updating existing formula: $FORMULA_FILE"
             sed -i "s|url \".*\"|url \"$DOWNLOAD_URL\"|" "$FORMULA_FILE"
@@ -61,41 +60,39 @@ jobs:
             sed -i "s|version \".*\"|version \"$VERSION\"|" "$FORMULA_FILE"
           else
             echo "🆕 Creating new formula for $TOOL_FOLDER"
-
+      
             if [[ ! -f "$META_FILE" ]]; then
               echo "❌ Metadata file not found: $META_FILE"
               exit 1
             fi
-
+      
             NAME=$(grep '^name' "$META_FILE" | cut -d '=' -f2 | xargs)
             DESC=$(grep '^desc' "$META_FILE" | cut -d '=' -f2- | xargs)
             LICENSE=$(grep '^license' "$META_FILE" | cut -d '=' -f2 | xargs)
             HOMEPAGE=$(grep '^homepage' "$META_FILE" | cut -d '=' -f2 | xargs)
             INSTALL=$(grep '^install' "$META_FILE" | cut -d '=' -f2- | xargs)
-
-            # Read multi-line caveats
             CAVEATS=$(awk '/^caveats = \|/,0' "$META_FILE" | tail -n +2)
-
+      
             cat > "$FORMULA_FILE" <<EOF
-              class ${NAME^} < Formula
-                desc "$DESC"
-                homepage "$HOMEPAGE"
-                url "$DOWNLOAD_URL"
-                sha256 "$SHA256"
-                version "$VERSION"
-                license "$LICENSE"
-              
-                def install
+            class ${NAME^} < Formula
+              desc "$DESC"
+              homepage "$HOMEPAGE"
+              url "$DOWNLOAD_URL"
+              sha256 "$SHA256"
+              version "$VERSION"
+              license "$LICENSE"
+            
+              def install
                 $INSTALL
-                end
-              
-                def caveats
-                <<~EOS
-              $CAVEATS
-                  EOS
-                end
               end
-              EOF
+            
+              def caveats
+                <<~EOS
+            $CAVEATS
+                EOS
+              end
+            end
+            EOF
           fi
 
       - name: Commit and push
