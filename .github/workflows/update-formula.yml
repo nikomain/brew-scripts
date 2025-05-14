@@ -1,8 +1,9 @@
 name: Update Homebrew Formula
 on:
-  push:
-    tags:
-      - '*-v*'
+  workflow_run:
+    workflows: ["tag-on-merge"]  # Name of the tagging workflow
+    types:
+      - completed
 
 jobs:
   update-formula:
