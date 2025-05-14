@@ -4,10 +4,10 @@ on:
     workflows: ["Auto Tag on Merge"]  # Name of the tagging workflow
     types:
       - completed
-
 jobs:
   update-formula:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}  # Only run if the tag workflow succeeded
     steps:
       - name: Checkout brew-scripts
         uses: actions/checkout@v3
@@ -17,18 +17,19 @@ jobs:
         id: tag
         run: |
           git fetch --tags
-
           LATEST_TAG=$(git tag --sort=-creatordate | grep -E '^[a-z0-9_-]+-v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
-
+          
+          if [[ -z "$LATEST_TAG" ]]; then
+            echo "❌ No matching tags found. Exiting."
+            exit 1
+          fi
+          
           echo "Latest tag: $LATEST_TAG"
-
           TOOL_NAME=$(echo "$LATEST_TAG" | cut -d'-' -f1)
           VERSION=$(echo "$LATEST_TAG" | cut -d'-' -f2 | sed 's/^v//')
-
           echo "full_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "tool_name=$TOOL_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Calculate SHA256
         id: sha
         run: |
@@ -36,18 +37,18 @@ jobs:
           curl -L $DOWNLOAD_URL | shasum -a 256 | cut -d ' ' -f 1 > sha.txt
           echo "sha256=$(cat sha.txt)" >> $GITHUB_OUTPUT
           echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
-
       - name: Checkout tap repository
         uses: actions/checkout@v3
         with:
           repository: nikomain/homebrew-tools
           token: ${{ secrets.HOMEBREW_PAT_TOKEN }}
-
+          path: homebrew-tap
       - name: Update or create formula
         run: |
+          cd homebrew-tap
           FORMULA_FILE="Formula/${{ steps.tag.outputs.tool_name }}.rb"
-          TOOL_FOLDER="${{ steps.tag.outputs.tool_name }}"
-          META_FILE="$TOOL_FOLDER/formula.meta"
+          META_DIR="Formula/metadata"
+          META_FILE="$META_DIR/${{ steps.tag.outputs.tool_name }}.meta"
       
           DOWNLOAD_URL="${{ steps.sha.outputs.download_url }}"
           SHA256="${{ steps.sha.outputs.sha256 }}"
@@ -59,7 +60,7 @@ jobs:
             sed -i "s|sha256 \".*\"|sha256 \"$SHA256\"|" "$FORMULA_FILE"
             sed -i "s|version \".*\"|version \"$VERSION\"|" "$FORMULA_FILE"
           else
-            echo "🆕 Creating new formula for $TOOL_FOLDER"
+            echo "🆕 Creating new formula for ${{ steps.tag.outputs.tool_name }}"
       
             if [[ ! -f "$META_FILE" ]]; then
               echo "❌ Metadata file not found: $META_FILE"
@@ -71,32 +72,38 @@ jobs:
             LICENSE=$(grep '^license' "$META_FILE" | cut -d '=' -f2 | xargs)
             HOMEPAGE=$(grep '^homepage' "$META_FILE" | cut -d '=' -f2 | xargs)
             INSTALL=$(grep '^install' "$META_FILE" | cut -d '=' -f2- | xargs)
+            
+            # Convert tool name to proper class name format
+            # Replace hyphens with underscores, then capitalize each word
+            CLASS_NAME=$(echo "$NAME" | tr '-' '_' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1' | tr -d ' ')
+            
+            # Extract caveats section (correctly handle multiline content)
             CAVEATS=$(awk '/^caveats = \|/,0' "$META_FILE" | tail -n +2)
       
-            cat > "$FORMULA_FILE" <<EOF
-            class ${NAME^} < Formula
-              desc "$DESC"
-              homepage "$HOMEPAGE"
-              url "$DOWNLOAD_URL"
-              sha256 "$SHA256"
-              version "$VERSION"
-              license "$LICENSE"
-            
-              def install
-                $INSTALL
-              end
-            
-              def caveats
-                <<~EOS
-            $CAVEATS
-                EOS
-              end
-            end
-            EOF
-          fi
+            cat > "$FORMULA_FILE" << 'FORMULA_EOF'
+class ${CLASS_NAME} < Formula
+  desc "${DESC}"
+  homepage "${HOMEPAGE}"
+  url "${DOWNLOAD_URL}"
+  sha256 "${SHA256}"
+  version "${VERSION}"
+  license "${LICENSE}"
 
+  def install
+    ${INSTALL}
+  end
+
+  def caveats
+    <<~EOS
+${CAVEATS}
+    EOS
+  end
+end
+FORMULA_EOF
+          fi
       - name: Commit and push
         run: |
+          cd homebrew-tap
           git config user.name "${{ secrets.GH_USERNAME }}"
           git config user.email "${{ secrets.GH_EMAIL }}"
           git add Formula/${{ steps.tag.outputs.tool_name }}.rb
