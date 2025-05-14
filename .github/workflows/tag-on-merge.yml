@@ -21,7 +21,7 @@ jobs:
           CHANGED=$(git diff --name-only HEAD^ HEAD)
 
           # Assume tools live in scripts/<toolname>/
-          TOOL_NAME=$(echo "$CHANGED" | grep -oE '^scripts/[^/]+/' | cut -d/ -f2 | sort -u | head -n1)
+          TOOL_NAME=$(echo "$CHANGED" | grep -oE '^[^/.][^/]*/' | cut -d/ -f1 | sort -u | head -n1)
 
           if [[ -z "$TOOL_NAME" ]]; then
             echo "❌ No tool detected from file changes"
