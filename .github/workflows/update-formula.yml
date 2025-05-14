@@ -9,6 +9,10 @@ jobs:
   update-formula:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout brew-scripts
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # So we can fetch tags later
       - name: Fetch latest tag info
         id: tag
         run: |
