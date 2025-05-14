@@ -1,7 +1,7 @@
 name: Update Homebrew Formula
 on:
   workflow_run:
-    workflows: ["tag-on-merge"]  # Name of the tagging workflow
+    workflows: ["Auto Tag on Merge"]  # Name of the tagging workflow
     types:
       - completed
 
