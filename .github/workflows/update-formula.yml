@@ -49,11 +49,16 @@ jobs:
           TOOL_FOLDER="${{ steps.tag.outputs.tool_name }}"
           META_FILE="$TOOL_FOLDER/formula.meta"
 
+          # Save GitHub output values to shell variables
+          DOWNLOAD_URL="${{ steps.sha.outputs.download_url }}"
+          SHA256="${{ steps.sha.outputs.sha256 }}"
+          VERSION="${{ steps.tag.outputs.version }}"
+
           if [[ -f "$FORMULA_FILE" ]]; then
             echo "🔄 Updating existing formula: $FORMULA_FILE"
-            sed -i 's|url ".*"|url "${{ steps.sha.outputs.download_url }}"|' "$FORMULA_FILE"
-            sed -i 's|sha256 ".*"|sha256 "${{ steps.sha.outputs.sha256 }}"|' "$FORMULA_FILE"
-            sed -i 's|version ".*"|version "${{ steps.tag.outputs.version }}"|' "$FORMULA_FILE"
+            sed -i "s|url \".*\"|url \"$DOWNLOAD_URL\"|" "$FORMULA_FILE"
+            sed -i "s|sha256 \".*\"|sha256 \"$SHA256\"|" "$FORMULA_FILE"
+            sed -i "s|version \".*\"|version \"$VERSION\"|" "$FORMULA_FILE"
           else
             echo "🆕 Creating new formula for $TOOL_FOLDER"
 
@@ -75,9 +80,9 @@ jobs:
       class ${NAME^} < Formula
         desc "$DESC"
         homepage "$HOMEPAGE"
-        url "${{ steps.sha.outputs.download_url }}"
-        sha256 "${{ steps.sha.outputs.sha256 }}"
-        version "${{ steps.tag.outputs.version }}"
+        url "$DOWNLOAD_URL"
+        sha256 "$SHA256"
+        version "$VERSION"
         license "$LICENSE"
 
         def install
