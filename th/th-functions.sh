@@ -2,7 +2,7 @@
 # 		    Teleport CLI shortcuts
 # ===========================================================
 th(){
-  echo 'p3rwien"
+  echo "krejer"
   th_login() {
     if tsh status 2>/dev/null | grep -q 'Logged in as:'; then
       echo "Already logged in to Teleport."
