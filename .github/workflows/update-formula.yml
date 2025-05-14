@@ -77,25 +77,25 @@ jobs:
             CAVEATS=$(awk '/^caveats = \|/,0' "$META_FILE" | tail -n +2)
 
             cat > "$FORMULA_FILE" <<EOF
-      class ${NAME^} < Formula
-        desc "$DESC"
-        homepage "$HOMEPAGE"
-        url "$DOWNLOAD_URL"
-        sha256 "$SHA256"
-        version "$VERSION"
-        license "$LICENSE"
-
-        def install
-          $INSTALL
-        end
-
-        def caveats
-          <<~EOS
-      $CAVEATS
-          EOS
-        end
-      end
-      EOF
+              class ${NAME^} < Formula
+                desc "$DESC"
+                homepage "$HOMEPAGE"
+                url "$DOWNLOAD_URL"
+                sha256 "$SHA256"
+                version "$VERSION"
+                license "$LICENSE"
+              
+                def install
+                $INSTALL
+                end
+              
+                def caveats
+                <<~EOS
+              $CAVEATS
+                  EOS
+                end
+              end
+              EOF
           fi
 
       - name: Commit and push
