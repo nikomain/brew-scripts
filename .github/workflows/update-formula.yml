@@ -9,20 +9,26 @@ jobs:
   update-formula:
     runs-on: ubuntu-latest
     steps:
-      - name: Get tag info
+      - name: Fetch latest tag info
         id: tag
         run: |
-          echo "full_tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          TOOL_NAME=$(echo ${GITHUB_REF#refs/tags/} | cut -d'-' -f1)
-          VERSION=$(echo ${GITHUB_REF#refs/tags/} | cut -d'-' -f2 | sed 's/^v//')
+          git fetch --tags
+
+          LATEST_TAG=$(git tag --sort=-creatordate | grep -E '^[a-z0-9_-]+-v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+
+          echo "Latest tag: $LATEST_TAG"
+
+          TOOL_NAME=$(echo "$LATEST_TAG" | cut -d'-' -f1)
+          VERSION=$(echo "$LATEST_TAG" | cut -d'-' -f2 | sed 's/^v//')
+
+          echo "full_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "tool_name=$TOOL_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Calculate SHA256
         id: sha
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${{ steps.tag.outputs.full_tag }}.tar.gz"
           curl -L $DOWNLOAD_URL | shasum -a 256 | cut -d ' ' -f 1 > sha.txt
           echo "sha256=$(cat sha.txt)" >> $GITHUB_OUTPUT
           echo "download_url=$DOWNLOAD_URL" >> $GITHUB_OUTPUT
