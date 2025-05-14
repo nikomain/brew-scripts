@@ -17,7 +17,7 @@ jobs:
       - name: Detect tool from changed files
         id: tool
         run: |
-          git fetch origin main --prune --unshallow
+          git fetch origin main --depth=2
           CHANGED=$(git diff --name-only HEAD^ HEAD)
 
           # Assume tools live in scripts/<toolname>/
